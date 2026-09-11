@@ -277,6 +277,8 @@ tbody tr:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}
 .bar-label{position:absolute;bottom:-24px;font-size:10.5px;color:var(--muted);font-weight:600}
 .legend{display:flex;gap:18px;color:var(--muted);font-size:12.5px;font-weight:600}
 .dot{display:inline-block;width:9px;height:9px;border-radius:50%;margin-right:6px;vertical-align:middle}
+.dot-income{background:var(--success)}
+.dot-expense{background:var(--danger)}
 
 /* Category bars */
 .category-bar{display:grid;grid-template-columns:130px 1fr 110px;gap:12px;align-items:center;margin:12px 0;font-size:13.5px}
@@ -286,6 +288,13 @@ tbody tr:hover{background:color-mix(in srgb,var(--primary) 4%,transparent)}
   background:linear-gradient(90deg,var(--danger),color-mix(in srgb,var(--danger) 60%,#f97316));
   transition:width .5s ease;
 }
+
+/* Receipts */
+.receipt-input{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.receipt-preview{margin-top:10px}
+.receipt-preview img{max-width:220px;max-height:160px;border-radius:10px;border:1px solid var(--border);display:block;object-fit:cover}
+.receipt-full{max-width:100%;border-radius:8px;display:block}
+.tx-amount-group{display:flex;align-items:center;gap:6px}
 
 /* Modal */
 .modal-backdrop{
@@ -343,3 +352,10 @@ hr{border:0;border-top:1px solid var(--border);margin:20px 0}
   .category-bar{grid-template-columns:1fr;gap:6px}
   .category-bar .right{text-align:left}
 }
+
+/* Utility spacing (used instead of inline styles) */
+.mt-12{margin-top:12px}
+.mt-18{margin-top:18px}
+.mb-10{margin-bottom:10px}
+.mb-18{margin-bottom:18px}
+.w-auto{width:auto}

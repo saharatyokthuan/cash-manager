@@ -1,120 +1,33 @@
-# Cash Manager
+# My CashFlow
 
-A comprehensive cash management application designed to help you track, manage, and optimize your financial transactions and cash flow.
+เว็บแอปจัดการรายรับ-รายจ่าย เงินยืม/ให้ยืม และสินเชื่อ ทำงานฝั่งเบราว์เซอร์ล้วน ๆ (ไม่มี backend) เก็บข้อมูลไว้ใน `localStorage`
 
-## Features
-
-- 💰 **Transaction Tracking** - Record and monitor all cash transactions with detailed information
-- 📊 **Financial Dashboard** - Visualize your financial data with interactive charts and summaries
-- 🏦 **Account Management** - Manage multiple accounts and track balances
-- 📈 **Reporting** - Generate detailed financial reports for analysis
-- 🔐 **Secure** - Keep your financial data safe and private
-- 📱 **Responsive Design** - Access your cash manager from any device
-
-## Getting Started
-
-### Prerequisites
-
-- Node.js (v14 or higher)
-- npm or yarn package manager
-
-### Installation
-
-1. Clone the repository:
-```bash
-git clone https://github.com/saharatyokthuan/cash-manager.git
-cd cash-manager
-```
-
-2. Install dependencies:
-```bash
-npm install
-# or
-yarn install
-```
-
-3. Start the application:
-```bash
-npm start
-# or
-yarn start
-```
-
-The application will open in your default browser at `http://localhost:3000`.
-
-## Project Structure
+## โครงสร้างไฟล์
 
 ```
-cash-manager/
-├── src/
-│   ├── components/     # React components
-│   ├── pages/          # Page components
-│   ├── services/       # API and business logic
-│   ├── hooks/          # Custom React hooks
-│   ├── styles/         # CSS and styling
-│   └── App.js          # Main application file
-├── public/             # Static files
-├── package.json        # Project dependencies
-└── README.md          # This file
+my-cashflow/
+├── index.html   # โครงหน้าเว็บทั้งหมด (ไม่มี CSS/JS ฝังใน)
+├── style.css    # สไตล์ทั้งหมด รวมธีมสว่าง/มืด และ responsive
+├── script.js    # ตรรกะแอปทั้งหมด: state, render, event handling
+└── README.md
 ```
 
-## Usage
+ไม่มีขั้นตอน build หรือ dependency ใด ๆ — เปิด `index.html` ในเบราว์เซอร์ได้ทันที (หรือเสิร์ฟผ่าน static server เช่น `python3 -m http.server`)
 
-### Creating a Transaction
+## ฟีเจอร์
 
-1. Navigate to the Transactions page
-2. Click "Add New Transaction"
-3. Fill in the transaction details:
-   - Amount
-   - Category
-   - Description
-   - Date
-4. Click "Save"
+- บันทึกรายรับ/รายจ่าย พร้อมหมวดหมู่ บัญชี และวิธีชำระเงิน
+- ค้นหา/กรอง/เรียงรายการ แยกมุมมองแบบทั้งหมดหรือรายเดือน
+- จัดการหมวดหมู่รายรับ-รายจ่ายเอง (ลบไม่ได้หากมีรายการใช้งานอยู่)
+- บันทึกเงินยืม/ให้ยืม และสินเชื่อ พร้อมคำนวณดอกเบี้ยแบบคงที่หรือลดต้นลดดอก และประวัติการชำระ
+- หน้าสรุปรายปี: กระแสเงินสดรายเดือนแบบกราฟแท่ง และรายจ่ายตามหมวดหมู่
+- แนบรูปใบเสร็จต่อรายการ (ย่อขนาดอัตโนมัติก่อนเก็บ), ดูรูปเต็มได้จากไอคอน 🧾
+- สลับธีมสว่าง/มืด, สำรอง/กู้คืนข้อมูลเป็นไฟล์ JSON, ล้างข้อมูลทั้งหมด
+- รองรับการใช้งานบนมือถือ (responsive layout)
 
-### Viewing Reports
+## หมายเหตุการพัฒนา
 
-1. Go to the Reports section
-2. Select your desired date range
-3. Choose report type (Summary, Detailed, Category Breakdown)
-4. Generate report
-
-### Managing Accounts
-
-1. Access Account Settings
-2. Add, edit, or delete accounts as needed
-3. Set budget limits and alerts
-
-## Contributing
-
-Contributions are welcome! Please follow these steps:
-
-1. Fork the repository
-2. Create your feature branch (`git checkout -b feature/AmazingFeature`)
-3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
-4. Push to the branch (`git push origin feature/AmazingFeature`)
-5. Open a Pull Request
-
-## License
-
-This project is licensed under the MIT License - see the LICENSE file for details.
-
-## Support
-
-For support, email support@cashmanager.com or open an issue in the [Issues](https://github.com/saharatyokthuan/cash-manager/issues) section.
-
-## Roadmap
-
-- [ ] Mobile app (iOS/Android)
-- [ ] Multi-currency support
-- [ ] Budget forecasting
-- [ ] Integration with banking APIs
-- [ ] Advanced analytics
-- [ ] Data export (PDF, Excel)
-
-## Contact
-
-**Project Maintainer:** [saharatyokthuan](https://github.com/saharatyokthuan)
-
----
-
-**Last Updated:** September 10, 2026
+- ปุ่มที่ต้องผูก event (แก้ไข/ลบ/บันทึกชำระ ฯลฯ) ใช้ `data-action` + `data-id` แทนการเขียน `onclick=""` ฝังใน HTML ที่สร้างจาก JS — จัดการ click ทั้งหมดด้วย event delegation จุดเดียวใน `script.js`
+- ไม่มี inline `style=""` ในหน้าเว็บหลัก ใช้ CSS class แทน (ยกเว้นค่าที่คำนวณแบบไดนามิก เช่น ความสูง/ความกว้างของกราฟและแถบ progress ซึ่งจำเป็นต้องเป็น inline style)
+- ข้อมูลทั้งหมดเก็บใน `localStorage` คีย์ `cashflow_v1`
+- รูปใบเสร็จจะถูกย่อ (max width 1000px, JPEG quality 0.72) ก่อนแปลงเป็น base64 เก็บลง `localStorage` เพื่อไม่ให้เปลืองพื้นที่เกินไป — ถ้าพื้นที่เต็มระบบจะแจ้งเตือนตอนบันทึก

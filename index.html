@@ -25,7 +25,7 @@
   <div class="content">
 <section class="page active" id="home">
 <div class="grid grid-4" id="homeStats"></div>
-<div class="grid grid-2" style="margin-top:18px">
+<div class="grid grid-2 mt-18">
 <div class="card">
 <h2 id="transactionFormTitle">บันทึกรายการ</h2>
 <form id="transactionForm" class="form-grid">
@@ -37,6 +37,14 @@
 <div class="field"><label>บัญชี</label><input id="txAccount" placeholder="เช่น เงินสด หรือ ธนาคาร"></div>
 <div class="field"><label>วิธีชำระเงิน</label><select id="txPayment"><option>เงินสด</option><option>โอนเงิน</option><option>บัตรเดบิต</option><option>บัตรเครดิต</option><option>พร้อมเพย์</option><option>อื่น ๆ</option></select></div>
 <div class="field full"><label>หมายเหตุ</label><textarea id="txNote" placeholder="รายละเอียดเพิ่มเติม"></textarea></div>
+<div class="field full">
+<label>ใบเสร็จ / รูปภาพ (ถ้ามี)</label>
+<div class="receipt-input">
+<label class="btn secondary small">📎 แนบรูป<input type="file" id="txReceiptInput" accept="image/*" hidden></label>
+<button type="button" class="btn danger small hidden" id="removeTxReceipt">ลบไฟล์แนบ</button>
+</div>
+<div class="receipt-preview hidden" id="txReceiptPreview"><img id="txReceiptImg" alt="ตัวอย่างใบเสร็จ"></div>
+</div>
 <div class="field full actions"><button class="btn" type="submit">บันทึกรายการ</button><button class="btn secondary hidden" type="button" id="cancelTxEdit">ยกเลิกแก้ไข</button></div>
 </form>
 </div>
@@ -53,7 +61,7 @@
 <input type="month" id="txFilterMonth">
 <select id="txSort"><option value="new">วันที่ล่าสุด</option><option value="old">วันที่เก่าสุด</option><option value="high">ยอดมากสุด</option><option value="low">ยอดน้อยสุด</option></select>
 </div>
-<div class="actions" style="margin-bottom:10px"><div class="segment"><button class="active" id="viewAll">ดูทั้งหมด</button><button id="viewMonth">ดูรายเดือน</button></div></div>
+<div class="actions mb-10"><div class="segment"><button class="active" id="viewAll">ดูทั้งหมด</button><button id="viewMonth">ดูรายเดือน</button></div></div>
 <div id="transactionTable"></div>
 </div>
 </section>
@@ -63,7 +71,7 @@
 <div class="card"><h2 class="income">หมวดหมู่รายรับ</h2><div class="category-list" id="incomeCategories"></div></div>
 <div class="card"><h2 class="expense">หมวดหมู่รายจ่าย</h2><div class="category-list" id="expenseCategories"></div></div>
 </div>
-<div class="card" style="margin-top:18px">
+<div class="card mt-18">
 <h3>เพิ่มหมวดหมู่</h3>
 <form id="categoryForm" class="form-grid">
 <div class="field"><label>ชื่อหมวดหมู่</label><input id="categoryName" required maxlength="40"></div>
@@ -121,20 +129,20 @@
 </section>
 
 <section class="page" id="summary">
-<div class="actions" style="margin-bottom:18px"><select id="summaryYear" style="width:auto"></select></div>
+<div class="actions mb-18"><select id="summaryYear" class="w-auto"></select></div>
 <div class="grid grid-4" id="summaryStats"></div>
-<div class="grid grid-2" style="margin-top:18px">
-<div class="card"><h3>กระแสเงินสดรายเดือน</h3><div class="legend"><span><i class="dot" style="background:var(--success)"></i>รายรับ</span><span><i class="dot" style="background:var(--danger)"></i>รายจ่าย</span></div><div class="chart" id="monthlyChart"></div></div>
+<div class="grid grid-2 mt-18">
+<div class="card"><h3>กระแสเงินสดรายเดือน</h3><div class="legend"><span><i class="dot dot-income"></i>รายรับ</span><span><i class="dot dot-expense"></i>รายจ่าย</span></div><div class="chart" id="monthlyChart"></div></div>
 <div class="card"><h3>รายจ่ายตามหมวดหมู่</h3><div id="categoryChart"></div></div>
 </div>
 </section>
 
 <section class="page" id="settings">
 <div class="grid grid-2">
-<div class="card"><h2>การแสดงผล</h2><p class="muted">เลือกธีมที่ต้องการใช้งาน</p><div class="actions"><button class="btn secondary" onclick="setTheme('light')">☀️ โหมดสว่าง</button><button class="btn secondary" onclick="setTheme('dark')">🌙 โหมดมืด</button></div></div>
-<div class="card"><h2>จัดการหมวดหมู่</h2><p class="muted">เพิ่มหรือลบหมวดหมู่รายรับและรายจ่าย</p><button class="btn secondary" onclick="showPage('categories')">ไปหน้าหมวดหมู่</button></div>
-<div class="card"><h2>สำรองและกู้คืนข้อมูล</h2><div class="actions"><button class="btn" onclick="exportData()">ดาวน์โหลดข้อมูล JSON</button><label class="btn secondary">นำเข้าข้อมูล<input type="file" id="importFile" accept=".json" hidden></label></div></div>
-<div class="card"><h2 class="expense">ล้างข้อมูลทั้งหมด</h2><p class="muted">ข้อมูลที่ลบแล้วไม่สามารถกู้คืนได้ หากไม่ได้สำรองไว้</p><button class="btn danger" onclick="clearAllData()">ล้างข้อมูลทั้งหมด</button></div>
+<div class="card"><h2>การแสดงผล</h2><p class="muted">เลือกธีมที่ต้องการใช้งาน</p><div class="actions"><button class="btn secondary" data-action="set-theme" data-theme="light">☀️ โหมดสว่าง</button><button class="btn secondary" data-action="set-theme" data-theme="dark">🌙 โหมดมืด</button></div></div>
+<div class="card"><h2>จัดการหมวดหมู่</h2><p class="muted">เพิ่มหรือลบหมวดหมู่รายรับและรายจ่าย</p><button class="btn secondary" data-action="show-page" data-page="categories">ไปหน้าหมวดหมู่</button></div>
+<div class="card"><h2>สำรองและกู้คืนข้อมูล</h2><div class="actions"><button class="btn" data-action="export-data">ดาวน์โหลดข้อมูล JSON</button><label class="btn secondary">นำเข้าข้อมูล<input type="file" id="importFile" accept=".json" hidden></label></div></div>
+<div class="card"><h2 class="expense">ล้างข้อมูลทั้งหมด</h2><p class="muted">ข้อมูลที่ลบแล้วไม่สามารถกู้คืนได้ หากไม่ได้สำรองไว้</p><button class="btn danger" data-action="clear-all-data">ล้างข้อมูลทั้งหมด</button></div>
 </div>
 </section>
 </div>
