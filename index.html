@@ -6,10 +6,19 @@
 <title>My CashFlow</title>
 <link rel="stylesheet" href="style.css">
 </head>
+
 <body>
+  <header class="top-main">
+    <div class="top-logo">$</div>
+  <div class="topic">
+    <div class="top-title">My CashFlow</div>
+    <div class="top-sup">บันทึกรายรับรายจ่าย</div>
+    <div id="CurrentDate"></div>
+  </div>
+  </header>
 <div class="layout">
 <aside class="sidebar">
-<div class="brand"><span class="logo">฿</span> My CashFlow</div>
+
 <nav class="nav">
 <button class="active" data-page="home">🏠 หน้าหลัก</button>
 <button data-page="transactions">📋 รายการ</button>
@@ -29,7 +38,8 @@
 <div class="card">
 <h2 id="transactionFormTitle">บันทึกรายการ</h2>
 <form id="transactionForm" class="form-grid">
-<div class="field"><label>วันที่ *</label><input type="date" id="txDate" required></div>
+<div class="field"><label>วันที่</label>
+<input type="date" id="txDate" required></div>
 <div class="field"><label>ชื่อรายการ *</label><input id="txName" maxlength="100" required placeholder="เช่น เงินเดือน หรือ ค่าอาหาร"></div>
 <div class="field"><label>จำนวนเงิน (บาท) *</label><input type="number" id="txAmount" min="0.01" step="0.01" required></div>
 <div class="field"><label>ประเภท *</label><select id="txType"><option value="income">รายรับ</option><option value="expense">รายจ่าย</option></select></div>

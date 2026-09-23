@@ -21,8 +21,31 @@
   --shadow-lg:0 28px 56px -12px rgba(0,0,0,.55);
   --grad:linear-gradient(135deg,#3b82f6,#6366f1 55%,#22c55e);
 }
-*{box-sizing:border-box}
-html,body{height:100%}
+
+*{
+  box-sizing: border-box 
+  
+}
+header {
+  background: skyblue;
+}
+.top-main{
+  display:flex;align-items:center;gap:12px;padding:12px 14px;
+  background:linear-gradient(180deg,rgba(19,27,46,.96),rgba(19,27,46,.72));
+  border-bottom:1px solid var(--line);position:sticky;top:0;z-index:60;
+  backdrop-filter:blur(10px);
+}
+.top-logo{
+  width:40px;height:40px;border-radius:12px;flex:0 0 auto;
+  display:grid;place-items:center;font-size:1.2rem;
+  background:linear-gradient(135deg,var(--gold),var(--amber));color:#20160a;
+  box-shadow:0 0 16px rgba(255,201,77,.35);
+}
+.topic{flex:1;min-width:0}
+.top-title{font-size:1.05rem;font-weight:800;letter-spacing:.3px;color:var(--gold)}
+.top-sup{font-size:.72rem;color:var(--muted)}
+html,body{
+  height:100%}
 body{
   margin:0;
   font-family:"Inter","IBM Plex Sans Thai",system-ui,-apple-system,"Segoe UI",sans-serif;
@@ -50,16 +73,7 @@ button:active{transform:translateY(1px)}
   position:sticky;top:0;height:100vh;
   display:flex;flex-direction:column;
 }
-.brand{
-  display:flex;align-items:center;gap:12px;
-  padding:4px 12px 22px;font-size:19px;font-weight:800;letter-spacing:-.01em;
-}
-.logo{
-  display:grid;place-items:center;width:40px;height:40px;
-  border-radius:13px;color:#fff;background:var(--grad);
-  font-size:18px;font-weight:800;
-  box-shadow:0 8px 18px -6px color-mix(in srgb,var(--primary) 55%,transparent);
-}
+
 .nav{display:flex;flex-direction:column;gap:4px}
 .nav button{
   border:0;background:transparent;color:var(--muted);
@@ -351,6 +365,33 @@ hr{border:0;border-top:1px solid var(--border);margin:20px 0}
   .toolbar{grid-template-columns:1fr}
   .category-bar{grid-template-columns:1fr;gap:6px}
   .category-bar .right{text-align:left}
+
+  /* Bigger tap targets on touch screens */
+  .icon-btn{padding:8px 10px;font-size:13px}
+  .btn.small{padding:9px 13px;font-size:13px}
+  .nav button{min-height:40px}
+  .segment{width:100%}
+  .segment button{flex:1;text-align:center}
+
+  /* Tables scroll horizontally but stay readable */
+  table{min-width:640px}
+  th,td{padding:12px 10px;font-size:13px}
+
+  /* Shorter chart on smaller screens */
+  .chart{height:200px}
+
+  /* Receipt attach UI */
+  .receipt-input{gap:8px}
+  .receipt-preview img{width:100%;max-width:100%;max-height:200px;object-fit:cover}
+}
+
+/* Small phones */
+@media (max-width:420px){
+  .content{padding:14px}
+  .card{padding:16px}
+  .stat strong{font-size:19px}
+  .topbar{padding:0 14px}
+  .brand{font-size:14px}
 }
 
 /* Utility spacing (used instead of inline styles) */
