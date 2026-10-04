@@ -3,10 +3,11 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0">
-<title>บันทึกกระแสเงินสด</title>
+<title>บันทึกกระแสเงินสด — Neon</title>
+<meta name="theme-color" content="#05050a">
 
 <!-- ลิงก์ไฟล์ CSS หลัก -->
-<link rel="stylesheet" href="css/style.css">
+<link rel="stylesheet" href="style.css">
 
 <!-- CDN: SheetJS ใช้สำหรับ Import/Export ไฟล์ .xlsx (ต้องมีอินเทอร์เน็ตตอนใช้งานฟังก์ชันนี้) -->
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js" defer></script>
@@ -15,16 +16,21 @@
 </head>
 <body>
 
+<!-- เอฟเฟกต์ Neon: แถบเลื่อน / อนุภาค / แสงตามนิ้ว -->
+<div id="scrollProgress"></div>
+<canvas id="particles"></canvas>
+<div id="mouseGlow"></div>
+
 <!-- ===================== TOP BAR ===================== -->
 <header class="topbar">
   <div class="topbar-title">
-    <!-- ไอคอนกระเป๋าเงิน (SVG) -->
-    <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-      <path d="M21 12V7H5a2 2 0 0 1 0-4h14v4"></path>
-      <path d="M3 5v14a2 2 0 0 0 2 2h16v-5"></path>
-      <path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path>
-    </svg>
+    <svg class="icon icon-lg" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M20 12V8H6a2 2 0 0 1 0-4h12v4"></path><path d="M4 6v12a2 2 0 0 0 2 2h14v-4"></path><path d="M18 12a2 2 0 0 0 0 4h4v-4Z"></path></svg>
     <span>บันทึกกระแสเงินสด</span>
+  </div>
+  <div class="theme-switcher">
+    <div class="theme-dot active" data-c="cyan"></div>
+    <div class="theme-dot" data-c="green"></div>
+    <div class="theme-dot" data-c="orange"></div>
   </div>
   <div class="topbar-balance" id="topbar-balance">฿0.00</div>
 </header>
@@ -430,6 +436,6 @@
 <div class="toast" id="toast"></div>
 
 <!-- โหลดไฟล์ JavaScript หลักไว้ท้ายสุด -->
-<script src="js/script.js" defer></script>
+<script src="script.js" defer></script>
 </body>
 </html>
