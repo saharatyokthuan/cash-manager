@@ -17,8 +17,8 @@ const STORAGE_KEYS = {
 
 // หมวดหมู่เริ่มต้น (ใช้ตอนเปิดแอปครั้งแรกเท่านั้น)
 const DEFAULT_CATEGORIES = {
-  income: ['เงินเดือน', 'โบนัส', 'รายได้พิเศษ', 'อื่นๆ'],
-  expense: ['อาหาร', 'เดินทาง', 'ที่พัก', 'ช้อปปิ้ง', 'สาธารณูปโภค', 'บันเทิง', 'สุขภาพ', 'การศึกษา', 'อื่นๆ']
+  income: ['เงินเดือน', 'โบนัส', 'รายได้พิเศษ', 'ยืม', 'อื่นๆ'],
+  expense: ['อาหาร', 'เดินทาง', 'ที่พัก', 'ช้อปปิ้ง', 'สาธารณูปโภค', 'บันเทิง', 'สุขภาพ', 'การศึกษา', 'คืน', 'อื่นๆ']
 };
 
 /* ===================== 2. STORAGE HELPERS ===================== */
@@ -66,10 +66,26 @@ function ensureDefaultCategories() {
   if (!cats) {
     cats = {
       income: DEFAULT_CATEGORIES.income.map(name => ({ id: generateId(), name })),
-      expense: DEFAULT_CATEGORIES.expense.map(name => ({ id: generateId(), name }))
+      expense: DEFAULT_CATEGORIES.expense.map(name => ({ id: generateId(), name })),
+      _addedBorrowReturn: true
     };
     setCategories(cats);
+    return cats;
   }
+
+  // Migration ครั้งเดียว: เติมหมวดหมู่ "ยืม" (รายรับ) และ "คืน" (รายจ่าย) ให้ผู้ใช้เดิมที่มีข้อมูลอยู่ก่อนแล้ว
+  // ใช้ flag _addedBorrowReturn กันไม่ให้เพิ่มซ้ำทุกครั้ง เผื่อผู้ใช้ลบหมวดหมู่นี้ทิ้งเองทีหลัง
+  if (!cats._addedBorrowReturn) {
+    if (!cats.income.some(c => c.name === 'ยืม')) {
+      cats.income.push({ id: generateId(), name: 'ยืม' });
+    }
+    if (!cats.expense.some(c => c.name === 'คืน')) {
+      cats.expense.push({ id: generateId(), name: 'คืน' });
+    }
+    cats._addedBorrowReturn = true;
+    setCategories(cats);
+  }
+
   return cats;
 }
 
@@ -150,6 +166,14 @@ function iconExpenseSvg() {
 
 /* ===================== 4. NAVIGATION (สลับหน้า) ===================== */
 
+// วัดความสูงจริงของ topbar แล้วเซ็ตเป็น CSS variable ให้แถบเมนู (tabbar) เกาะด้านล่างพอดีเสมอ
+// แก้บั๊ก: เดิม CSS ใช้เลขตายตัว top: 52px ซึ่งอาจไม่ตรงกับความสูงจริงในบางอุปกรณ์/ขนาดฟอนต์
+function setTopbarHeightVar() {
+  const topbar = document.querySelector('.topbar');
+  if (!topbar) return;
+  document.documentElement.style.setProperty('--topbar-height', `${topbar.offsetHeight}px`);
+}
+
 function initNavigation() {
   const navButtons = document.querySelectorAll('.nav-btn');
   navButtons.forEach(btn => {
@@ -184,6 +208,19 @@ function populateCategorySelect(selectEl, type) {
   const list = cats[type] || [];
   const previousValue = selectEl.value;
   selectEl.innerHTML = '';
+
+  // แก้บั๊ก: ถ้าลบหมวดหมู่ของประเภทนี้จนหมด select จะว่างและทำให้บันทึกรายการไม่ได้
+  // ใส่ตัวเลือกหลอก (disabled) ไว้แทน เพื่อกันฟอร์มพังและบอกผู้ใช้ให้ไปเพิ่มหมวดหมู่ก่อน
+  if (list.length === 0) {
+    const emptyOption = document.createElement('option');
+    emptyOption.value = '';
+    emptyOption.textContent = 'ยังไม่มีหมวดหมู่ (กรุณาเพิ่มก่อน)';
+    emptyOption.disabled = true;
+    emptyOption.selected = true;
+    selectEl.appendChild(emptyOption);
+    return;
+  }
+
   list.forEach(cat => {
     const option = document.createElement('option');
     option.value = cat.name;
@@ -246,18 +283,24 @@ function initCategoryPage() {
     if (!name) return;
 
     const cats = ensureDefaultCategories();
+
+    // เช็คชื่อซ้ำในกลุ่มเดียวกันเสมอ ทั้งตอนเพิ่มและตอนแก้ไข (ไม่นับตัวเองตอนแก้ไข)
+    // แก้บั๊ก: เดิมตอน "แก้ไข" ไม่มีการเช็คชื่อซ้ำ ทำให้เกิดหมวดหมู่ชื่อซ้ำกันได้
+    const isDuplicate = cats[activeCategoryType].some(
+      c => c.name === name && c.id !== categoryEditId
+    );
+    if (isDuplicate) {
+      showToast('มีหมวดหมู่ชื่อนี้อยู่แล้ว');
+      return;
+    }
+
     if (categoryEditId) {
       // แก้ไขชื่อหมวดหมู่เดิม
       const target = cats[activeCategoryType].find(c => c.id === categoryEditId);
       if (target) target.name = name;
       showToast('แก้ไขหมวดหมู่แล้ว');
     } else {
-      // เพิ่มหมวดหมู่ใหม่ (กันชื่อซ้ำในกลุ่มเดียวกัน)
-      const exists = cats[activeCategoryType].some(c => c.name === name);
-      if (exists) {
-        showToast('มีหมวดหมู่นี้อยู่แล้ว');
-        return;
-      }
+      // เพิ่มหมวดหมู่ใหม่
       cats[activeCategoryType].push({ id: generateId(), name });
       showToast('เพิ่มหมวดหมู่แล้ว');
     }
@@ -351,7 +394,11 @@ function initTransactionForm() {
     const amount = parseFloat(document.getElementById('txn-amount').value);
     const note = document.getElementById('txn-note').value.trim();
 
-    if (!date || !category || isNaN(amount) || amount < 0) {
+    if (!category) {
+      showToast('กรุณาเพิ่มหมวดหมู่ก่อนบันทึกรายการ');
+      return;
+    }
+    if (!date || isNaN(amount) || amount < 0) {
       showToast('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
@@ -691,6 +738,23 @@ function resetDebtForm() {
   document.getElementById('debt-submit-btn').textContent = 'เพิ่มรายการ';
 }
 
+// คำนวณสถานะใกล้ครบกำหนด/เลยกำหนดของหนี้สิน โดยเทียบวันครบกำหนดกับวันนี้ (มองแค่รอบเดือนปัจจุบัน)
+// คืนค่า null ถ้ายังไม่ใกล้กำหนด หรือไม่มีการตั้งวันครบกำหนดไว้
+function getDebtDueStatus(dueDay) {
+  if (!dueDay) return null;
+  const today = new Date();
+  const day = today.getDate();
+  const diff = dueDay - day;
+  if (diff >= 0 && diff <= 3) return { label: 'ใกล้ครบกำหนด', className: 'soon' };
+  if (diff < 0 && diff >= -3) return { label: 'เลยกำหนดชำระ', className: 'overdue' };
+  if (diff < 0) {
+    // ผ่านวันครบกำหนดของเดือนนี้ไปนานแล้ว: ดูว่ารอบเดือนหน้าใกล้ถึงไหม
+    const left = daysInMonth(today.getFullYear(), today.getMonth()) - day + dueDay;
+    if (left <= 3) return { label: 'ใกล้ครบกำหนด', className: 'soon' };
+  }
+  return null;
+}
+
 function renderDebtList() {
   const debts = getDebts();
   const container = document.getElementById('debt-list');
@@ -703,6 +767,7 @@ function renderDebtList() {
 
   debts.forEach(debt => {
     const ratio = debt.limit > 0 ? Math.min(100, Math.round((debt.balance / debt.limit) * 100)) : 0;
+    const dueStatus = getDebtDueStatus(debt.dueDay);
     const item = document.createElement('div');
     item.className = 'list-item';
     item.style.flexWrap = 'wrap';
@@ -712,6 +777,7 @@ function renderDebtList() {
       </div>
       <div class="list-item-info" style="flex-basis: 100%;">
         <span class="list-item-title">${escapeHtml(debt.name)}</span>
+        ${dueStatus ? `<span class="due-badge ${dueStatus.className}">${dueStatus.label}</span>` : ''}
         <span class="list-item-sub">
           คงเหลือ ${formatCurrency(debt.balance)} / วงเงิน ${formatCurrency(debt.limit)}
           ${debt.interest ? ' · ดอกเบี้ย ' + debt.interest + '%' : ''}
@@ -784,7 +850,11 @@ function initRecurringForm() {
     const day = parseInt(document.getElementById('recurring-day').value, 10);
     const note = document.getElementById('recurring-note').value.trim();
 
-    if (!name || !category || isNaN(amount) || !day || day < 1 || day > 31) {
+    if (!category) {
+      showToast('กรุณาเพิ่มหมวดหมู่ก่อนบันทึกรายการประจำ');
+      return;
+    }
+    if (!name || isNaN(amount) || !day || day < 1 || day > 31) {
       showToast('กรุณากรอกข้อมูลให้ครบถ้วน');
       return;
     }
@@ -1022,8 +1092,8 @@ function renderIncomeExpenseBarChart() {
     data: {
       labels: months.map(formatMonthLabel),
       datasets: [
-        { label: 'รายรับ', data: incomeData, backgroundColor: '#15803d' },
-        { label: 'รายจ่าย', data: expenseData, backgroundColor: '#c0392b' }
+        { label: 'รายรับ', data: incomeData, backgroundColor: cssVar('--color-income') },
+        { label: 'รายจ่าย', data: expenseData, backgroundColor: cssVar('--color-expense') }
       ]
     },
     options: {
@@ -1059,8 +1129,8 @@ function renderBalanceLineChart() {
       datasets: [{
         label: 'เงินสะสม',
         data: balanceData,
-        borderColor: '#0f766e',
-        backgroundColor: 'rgba(15, 118, 110, 0.15)',
+        borderColor: cssVar('--accent'),
+        backgroundColor: cssVar('--accent') + '22',
         fill: true,
         tension: 0.3
       }]
@@ -1091,7 +1161,7 @@ function sumByMonthAndType(transactions, ym, type) {
 
 // สร้างชุดสีสำหรับกราฟวงกลมให้พอกับจำนวนหมวดหมู่
 function generateChartColors(count) {
-  const palette = ['#0f766e', '#15803d', '#c0392b', '#b7791f', '#2563eb', '#7c3aed', '#db2777', '#0891b2', '#65a30d', '#ea580c'];
+  const palette = [cssVar('--accent'), cssVar('--accent2'), '#00ff88', '#ff4466', '#ffcc00', '#00aaff', '#ff8800', '#aa66ff', '#66ffcc', '#ff66aa'];
   const colors = [];
   for (let i = 0; i < count; i++) {
     colors.push(palette[i % palette.length]);
@@ -1177,7 +1247,7 @@ function handleImportJson(e) {
   reader.onload = (event) => {
     try {
       const data = JSON.parse(event.target.result);
-      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) return;
+      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) { e.target.value = ''; return; }
 
       if (Array.isArray(data.transactions)) setTransactions(data.transactions);
       if (data.categories) setCategories(data.categories);
@@ -1211,7 +1281,7 @@ function handleImportXlsx(e) {
       const data = new Uint8Array(event.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) return;
+      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) { e.target.value = ''; return; }
 
       if (workbook.Sheets['Transactions']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Transactions']);
@@ -1260,7 +1330,8 @@ function handleImportXlsx(e) {
           amount: Number(r.amount) || 0,
           day: Number(r.day) || 1,
           note: r.note || '',
-          generatedMonths: []
+          // กันสร้างรายการประจำของเดือนนี้ซ้ำหลังนำเข้า
+          generatedMonths: (Number(r.day) || 1) <= new Date().getDate() ? [toMonthKey(new Date())] : []
         })));
       }
 
@@ -1312,6 +1383,10 @@ function refreshEverything() {
 document.addEventListener('DOMContentLoaded', () => {
   ensureDefaultCategories();
 
+  setTopbarHeightVar();
+  window.addEventListener('resize', setTopbarHeightVar);
+  window.addEventListener('load', setTopbarHeightVar);
+
   initNavigation();
   initCategoryPage();
   initTransactionForm();
@@ -1336,3 +1411,108 @@ document.addEventListener('DOMContentLoaded', () => {
   renderRecurringList();
   updateTopbarBalance();
 });
+
+/* ===================== 13. NEON CYBER HUB: เอฟเฟกต์และธีมสี ===================== */
+
+// อ่านค่าตัวแปรสีจาก CSS (ใช้กับกราฟให้เปลี่ยนตามธีม)
+function cssVar(name) {
+  return getComputedStyle(document.documentElement).getPropertyValue(name).trim();
+}
+
+(function neonFx() {
+  const root = document.documentElement;
+
+  // สีตัวอักษร/เส้นกริดของ Chart.js ให้เข้ากับพื้นหลังมืด
+  if (window.Chart) {
+    Chart.defaults.color = '#7a8ba8';
+    Chart.defaults.borderColor = 'rgba(0,255,255,.12)';
+  }
+
+  // --- อนุภาคพื้นหลัง (หยุดเมื่อสลับแอป เพื่อประหยัดแบตมือถือ) ---
+  const canvas = document.getElementById('particles');
+  const ctx = canvas.getContext('2d');
+  const COUNT = window.innerWidth < 600 ? 35 : 70;
+  let particles = [], rafId = null;
+  const resize = () => { canvas.width = innerWidth; canvas.height = innerHeight; };
+  resize();
+  window.addEventListener('resize', resize);
+  for (let i = 0; i < COUNT; i++) {
+    particles.push({
+      x: Math.random() * canvas.width, y: Math.random() * canvas.height,
+      vx: (Math.random() - 0.5) * 0.6, vy: (Math.random() - 0.5) * 0.6,
+      r: Math.random() * 2 + 1
+    });
+  }
+  function draw() {
+    ctx.clearRect(0, 0, canvas.width, canvas.height);
+    const accent = cssVar('--accent');
+    particles.forEach((p, i) => {
+      p.x += p.vx; p.y += p.vy;
+      if (p.x < 0 || p.x > canvas.width) p.vx *= -1;
+      if (p.y < 0 || p.y > canvas.height) p.vy *= -1;
+      ctx.beginPath();
+      ctx.arc(p.x, p.y, p.r, 0, Math.PI * 2);
+      ctx.fillStyle = accent; ctx.globalAlpha = 0.6; ctx.fill();
+      for (let j = i + 1; j < particles.length; j++) {
+        const q = particles[j], dx = p.x - q.x, dy = p.y - q.y;
+        const d = Math.sqrt(dx * dx + dy * dy);
+        if (d < 120) {
+          ctx.beginPath(); ctx.moveTo(p.x, p.y); ctx.lineTo(q.x, q.y);
+          ctx.strokeStyle = accent; ctx.globalAlpha = (1 - d / 120) * 0.15; ctx.stroke();
+        }
+      }
+    });
+    ctx.globalAlpha = 1;
+    rafId = requestAnimationFrame(draw);
+  }
+  draw();
+  document.addEventListener('visibilitychange', () => {
+    if (document.hidden) cancelAnimationFrame(rafId); else draw();
+  });
+
+  // --- แสงตามเมาส์/นิ้ว ---
+  const glow = document.getElementById('mouseGlow');
+  const moveGlow = (x, y) => { glow.style.left = x + 'px'; glow.style.top = y + 'px'; };
+  document.addEventListener('mousemove', e => moveGlow(e.clientX, e.clientY));
+  document.addEventListener('touchmove', e => moveGlow(e.touches[0].clientX, e.touches[0].clientY), { passive: true });
+
+  // --- แถบความคืบหน้าตอนเลื่อน ---
+  const bar = document.getElementById('scrollProgress');
+  window.addEventListener('scroll', () => {
+    const max = root.scrollHeight - root.clientHeight;
+    bar.style.width = (max > 0 ? root.scrollTop / max * 100 : 0) + '%';
+  });
+
+  // --- ripple บนปุ่ม (ผูกที่ document รองรับปุ่มที่สร้างทีหลัง) ---
+  document.addEventListener('click', e => {
+    const btn = e.target.closest('.btn-primary, .btn-secondary, .btn-danger, .nav-btn, .type-btn');
+    if (!btn) return;
+    const r = btn.getBoundingClientRect(), s = Math.max(r.width, r.height);
+    const span = document.createElement('span');
+    span.className = 'ripple';
+    span.style.width = span.style.height = s + 'px';
+    span.style.left = (e.clientX - r.left - s / 2) + 'px';
+    span.style.top = (e.clientY - r.top - s / 2) + 'px';
+    btn.appendChild(span);
+    setTimeout(() => span.remove(), 600);
+  });
+
+  // --- ธีมสี 3 โทน (จำค่าไว้ในเครื่อง) ---
+  const themes = {
+    cyan: { a: '#00ffff', b: '#ff00ff' },
+    green: { a: '#00ff88', b: '#00aaff' },
+    orange: { a: '#ff8800', b: '#ff0066' }
+  };
+  const dots = document.querySelectorAll('.theme-dot');
+  function setTheme(key, redraw) {
+    root.style.setProperty('--accent', themes[key].a);
+    root.style.setProperty('--accent2', themes[key].b);
+    dots.forEach(d => d.classList.toggle('active', d.dataset.c === key));
+    try { localStorage.setItem('cft_theme', key); } catch (e) {}
+    if (redraw) renderDashboard(); // วาดกราฟใหม่ให้สีตรงธีม
+  }
+  dots.forEach(d => d.addEventListener('click', () => setTheme(d.dataset.c, true)));
+  let saved = null;
+  try { saved = localStorage.getItem('cft_theme'); } catch (e) {}
+  if (saved && themes[saved]) setTheme(saved, false);
+})();
