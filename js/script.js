@@ -1010,10 +1010,13 @@ function checkAndGenerateRecurring() {
       safetyCounter++;
       const ym = toMonthKey(cursor);
       const isCurrentMonth = ym === toMonthKey(today);
-      const isDuePassed = isCurrentMonth ? today.getDate() >= item.day : true;
+      // ปรับวันครบกำหนดให้ไม่เกินจำนวนวันจริงของเดือนนั้น (เช่น ตั้งวันที่ 31 แต่เดือนมี 30 วัน)
+      // แก้บั๊ก: เดิมเทียบ today.getDate() >= item.day ตรง ๆ ทำให้รายการวันที่ 29-31
+      // ไม่ถูกสร้างเลยในเดือนที่สั้นกว่า (เช่น กุมภาพันธ์ หรือเดือนที่มี 30 วัน)
+      const dayForMonth = Math.min(item.day, daysInMonth(cursor.getFullYear(), cursor.getMonth()));
+      const isDuePassed = isCurrentMonth ? today.getDate() >= dayForMonth : true;
 
       if (!item.generatedMonths.includes(ym) && isDuePassed) {
-        const dayForMonth = Math.min(item.day, daysInMonth(cursor.getFullYear(), cursor.getMonth()));
         const dateStr = `${ym}-${pad2(dayForMonth)}`;
         transactions.push({
           id: generateId(),
