@@ -255,8 +255,8 @@ function renderCategoryList() {
         <span class="list-item-title">${escapeHtml(cat.name)}</span>
       </div>
       <div class="list-item-actions">
-        <button type="button" class="icon-btn edit" data-action="edit-category" data-id="${cat.id}">${iconEditSvg()}</button>
-        <button type="button" class="icon-btn delete" data-action="delete-category" data-id="${cat.id}">${iconDeleteSvg()}</button>
+        <button type="button" class="icon-btn edit" data-action="edit-category" data-id="${escapeAttr(cat.id)}">${iconEditSvg()}</button>
+        <button type="button" class="icon-btn delete" data-action="delete-category" data-id="${escapeAttr(cat.id)}">${iconDeleteSvg()}</button>
       </div>
     `;
     container.appendChild(item);
@@ -358,6 +358,38 @@ function escapeHtml(text) {
   const div = document.createElement('div');
   div.textContent = text == null ? '' : String(text);
   return div.innerHTML;
+}
+
+// escape สำหรับใส่ใน attribute (escapeHtml ไม่ครอบคลุมเครื่องหมายคำพูด
+// เพราะใช้ textContent จึงไม่ escape " และ ' ให้ ต้องมีตัวนี้แยก)
+function escapeAttr(text) {
+  return String(text == null ? '' : text)
+    .replace(/&/g, '&amp;')
+    .replace(/"/g, '&quot;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
+// บังคับค่า type ให้เป็นค่าที่รู้จักเท่านั้น (กัน HTML/attribute injection
+// จากข้อมูลที่นำเข้า ซึ่งเดิม t.type ถูกใส่ใน class โดยไม่ตรวจ)
+function normalizeType(type) {
+  return type === 'expense' ? 'expense' : 'income';
+}
+
+// บังคับสถานะเงินยืมให้เป็นค่าที่รู้จักเท่านั้น
+function normalizeLoanStatus(status) {
+  return Object.prototype.hasOwnProperty.call(LOAN_STATUS_LABEL, status) ? status : 'borrowing';
+}
+
+// ตรวจ id ที่นำเข้าให้เป็น string ที่ปลอดภัย ถ้าไม่ใช่อย่างนั้นสร้างใหม่
+function sanitizeId(id) {
+  return (typeof id === 'string' && id.trim()) ? id : generateId();
+}
+
+// จำกัด "วันที่ของเดือน" (day) ให้อยู่ในช่วง 1-31
+function clampDay(value) {
+  const n = parseInt(value, 10);
+  return (n >= 1 && n <= 31) ? n : 1;
 }
 
 /* ===================== 6. หน้าหลัก: รายรับ-รายจ่าย (TRANSACTIONS) ===================== */
@@ -499,15 +531,15 @@ function renderTransactionList() {
       const item = document.createElement('div');
       item.className = 'list-item';
       item.innerHTML = `
-        <div class="list-item-icon ${t.type}">${t.type === 'income' ? iconIncomeSvg() : iconExpenseSvg()}</div>
+        <div class="list-item-icon ${normalizeType(t.type)}">${t.type === 'income' ? iconIncomeSvg() : iconExpenseSvg()}</div>
         <div class="list-item-info">
           <span class="list-item-title">${escapeHtml(t.category)}</span>
           <span class="list-item-sub">${formatDateDisplay(t.date)}${t.note ? ' · ' + escapeHtml(t.note) : ''}</span>
         </div>
-        <span class="list-item-amount ${t.type}">${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}</span>
+        <span class="list-item-amount ${normalizeType(t.type)}">${t.type === 'income' ? '+' : '-'}${formatCurrency(t.amount)}</span>
         <div class="list-item-actions">
-          <button type="button" class="icon-btn edit" data-action="edit-txn" data-id="${t.id}">${iconEditSvg()}</button>
-          <button type="button" class="icon-btn delete" data-action="delete-txn" data-id="${t.id}">${iconDeleteSvg()}</button>
+          <button type="button" class="icon-btn edit" data-action="edit-txn" data-id="${escapeAttr(t.id)}">${iconEditSvg()}</button>
+          <button type="button" class="icon-btn delete" data-action="delete-txn" data-id="${escapeAttr(t.id)}">${iconDeleteSvg()}</button>
         </div>
       `;
       container.appendChild(item);
@@ -653,12 +685,12 @@ function renderLoanList() {
       <div class="list-item-info">
         <span class="list-item-title">${escapeHtml(loan.name)}</span>
         <span class="list-item-sub">${formatDateDisplay(loan.date)}${loan.note ? ' · ' + escapeHtml(loan.note) : ''}</span>
-        <span class="status-badge ${loan.status}">${LOAN_STATUS_LABEL[loan.status] || loan.status}</span>
+        <span class="status-badge ${normalizeLoanStatus(loan.status)}">${LOAN_STATUS_LABEL[normalizeLoanStatus(loan.status)]}</span>
       </div>
       <span class="list-item-amount">${formatCurrency(loan.amount)}</span>
       <div class="list-item-actions">
-        <button type="button" class="icon-btn edit" data-action="edit-loan" data-id="${loan.id}">${iconEditSvg()}</button>
-        <button type="button" class="icon-btn delete" data-action="delete-loan" data-id="${loan.id}">${iconDeleteSvg()}</button>
+        <button type="button" class="icon-btn edit" data-action="edit-loan" data-id="${escapeAttr(loan.id)}">${iconEditSvg()}</button>
+        <button type="button" class="icon-btn delete" data-action="delete-loan" data-id="${escapeAttr(loan.id)}">${iconDeleteSvg()}</button>
       </div>
     `;
     container.appendChild(item);
@@ -780,17 +812,17 @@ function renderDebtList() {
         ${dueStatus ? `<span class="due-badge ${dueStatus.className}">${dueStatus.label}</span>` : ''}
         <span class="list-item-sub">
           คงเหลือ ${formatCurrency(debt.balance)} / วงเงิน ${formatCurrency(debt.limit)}
-          ${debt.interest ? ' · ดอกเบี้ย ' + debt.interest + '%' : ''}
+          ${debt.interest ? ' · ดอกเบี้ย ' + Number(debt.interest) + '%' : ''}
         </span>
         <span class="list-item-sub">
-          ${debt.dueDay ? 'ครบกำหนดวันที่ ' + debt.dueDay + ' ของทุกเดือน' : ''}
+          ${debt.dueDay ? 'ครบกำหนดวันที่ ' + Number(debt.dueDay) + ' ของทุกเดือน' : ''}
           ${debt.minPayment ? ' · ขั้นต่ำ ' + formatCurrency(debt.minPayment) : ''}
         </span>
         <div class="progress-track"><div class="progress-fill" style="width:${ratio}%"></div></div>
       </div>
       <div class="list-item-actions">
-        <button type="button" class="icon-btn edit" data-action="edit-debt" data-id="${debt.id}">${iconEditSvg()}</button>
-        <button type="button" class="icon-btn delete" data-action="delete-debt" data-id="${debt.id}">${iconDeleteSvg()}</button>
+        <button type="button" class="icon-btn edit" data-action="edit-debt" data-id="${escapeAttr(debt.id)}">${iconEditSvg()}</button>
+        <button type="button" class="icon-btn delete" data-action="delete-debt" data-id="${escapeAttr(debt.id)}">${iconDeleteSvg()}</button>
       </div>
     `;
     container.appendChild(item);
@@ -900,15 +932,15 @@ function renderRecurringList() {
     const item = document.createElement('div');
     item.className = 'list-item';
     item.innerHTML = `
-      <div class="list-item-icon ${r.type}">${r.type === 'income' ? iconIncomeSvg() : iconExpenseSvg()}</div>
+      <div class="list-item-icon ${normalizeType(r.type)}">${r.type === 'income' ? iconIncomeSvg() : iconExpenseSvg()}</div>
       <div class="list-item-info">
         <span class="list-item-title">${escapeHtml(r.name)}</span>
-        <span class="list-item-sub">${escapeHtml(r.category)} · ทุกวันที่ ${r.day} ของเดือน</span>
+        <span class="list-item-sub">${escapeHtml(r.category)} · ทุกวันที่ ${Number(r.day)} ของเดือน</span>
       </div>
-      <span class="list-item-amount ${r.type}">${r.type === 'income' ? '+' : '-'}${formatCurrency(r.amount)}</span>
+      <span class="list-item-amount ${normalizeType(r.type)}">${r.type === 'income' ? '+' : '-'}${formatCurrency(r.amount)}</span>
       <div class="list-item-actions">
-        <button type="button" class="icon-btn edit" data-action="edit-recurring" data-id="${r.id}">${iconEditSvg()}</button>
-        <button type="button" class="icon-btn delete" data-action="delete-recurring" data-id="${r.id}">${iconDeleteSvg()}</button>
+        <button type="button" class="icon-btn edit" data-action="edit-recurring" data-id="${escapeAttr(r.id)}">${iconEditSvg()}</button>
+        <button type="button" class="icon-btn delete" data-action="delete-recurring" data-id="${escapeAttr(r.id)}">${iconDeleteSvg()}</button>
       </div>
     `;
     container.appendChild(item);
@@ -1239,6 +1271,73 @@ function downloadBlob(blob, filename) {
   URL.revokeObjectURL(url);
 }
 
+/* ทำความสะอาดข้อมูลที่นำเข้า: บังคับชนิดและค่าฟิลด์ให้ถูกต้อง
+   เพื่อไม่ให้ค่าที่ไม่คาดคิด (เช่น type/status ที่ไม่รู้จัก) หลุดเข้า HTML ตอนแสดงผล */
+function sanitizeTransactionRecord(t) {
+  if (!t || typeof t !== 'object') return null;
+  return {
+    id: sanitizeId(t.id),
+    date: typeof t.date === 'string' ? t.date : '',
+    type: normalizeType(t.type),
+    category: typeof t.category === 'string' ? t.category : '',
+    amount: Number(t.amount) || 0,
+    note: typeof t.note === 'string' ? t.note : ''
+  };
+}
+
+function sanitizeLoanRecord(l) {
+  if (!l || typeof l !== 'object') return null;
+  return {
+    id: sanitizeId(l.id),
+    name: typeof l.name === 'string' ? l.name : '',
+    date: typeof l.date === 'string' ? l.date : '',
+    amount: Number(l.amount) || 0,
+    status: normalizeLoanStatus(l.status),
+    note: typeof l.note === 'string' ? l.note : ''
+  };
+}
+
+function sanitizeDebtRecord(d) {
+  if (!d || typeof d !== 'object') return null;
+  return {
+    id: sanitizeId(d.id),
+    name: typeof d.name === 'string' ? d.name : '',
+    limit: Number(d.limit) || 0,
+    balance: Number(d.balance) || 0,
+    interest: Number(d.interest) || 0,
+    dueDay: d.dueDay ? clampDay(d.dueDay) : null,
+    minPayment: Number(d.minPayment) || 0
+  };
+}
+
+function sanitizeRecurringRecord(r) {
+  if (!r || typeof r !== 'object') return null;
+  return {
+    id: sanitizeId(r.id),
+    name: typeof r.name === 'string' ? r.name : '',
+    type: normalizeType(r.type),
+    category: typeof r.category === 'string' ? r.category : '',
+    amount: Number(r.amount) || 0,
+    day: clampDay(r.day),
+    note: typeof r.note === 'string' ? r.note : '',
+    generatedMonths: Array.isArray(r.generatedMonths)
+      ? r.generatedMonths.filter(m => typeof m === 'string')
+      : []
+  };
+}
+
+function sanitizeCategories(cats) {
+  const result = { income: [], expense: [] };
+  ['income', 'expense'].forEach(type => {
+    const list = (cats && Array.isArray(cats[type])) ? cats[type] : [];
+    result[type] = list
+      .filter(c => c && typeof c.name === 'string' && c.name.trim())
+      .map(c => ({ id: sanitizeId(c.id), name: c.name.trim() }));
+  });
+  if (cats && cats._addedBorrowReturn) result._addedBorrowReturn = true;
+  return result;
+}
+
 function handleImportJson(e) {
   const file = e.target.files[0];
   if (!file) return;
@@ -1249,11 +1348,11 @@ function handleImportJson(e) {
       const data = JSON.parse(event.target.result);
       if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) { e.target.value = ''; return; }
 
-      if (Array.isArray(data.transactions)) setTransactions(data.transactions);
-      if (data.categories) setCategories(data.categories);
-      if (Array.isArray(data.loans)) setLoans(data.loans);
-      if (Array.isArray(data.debts)) setDebts(data.debts);
-      if (Array.isArray(data.recurring)) setRecurring(data.recurring);
+      if (Array.isArray(data.transactions)) setTransactions(data.transactions.map(sanitizeTransactionRecord).filter(Boolean));
+      if (data.categories) setCategories(sanitizeCategories(data.categories));
+      if (Array.isArray(data.loans)) setLoans(data.loans.map(sanitizeLoanRecord).filter(Boolean));
+      if (Array.isArray(data.debts)) setDebts(data.debts.map(sanitizeDebtRecord).filter(Boolean));
+      if (Array.isArray(data.recurring)) setRecurring(data.recurring.map(sanitizeRecurringRecord).filter(Boolean));
 
       refreshEverything();
       showToast('นำเข้าข้อมูล .json สำเร็จ');
@@ -1285,62 +1384,36 @@ function handleImportXlsx(e) {
 
       if (workbook.Sheets['Transactions']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Transactions']);
-        setTransactions(rows.map(r => ({
-          id: r.id || generateId(),
-          date: r.date,
-          type: r.type,
-          category: r.category,
-          amount: Number(r.amount) || 0,
-          note: r.note || ''
-        })));
+        setTransactions(rows.map(sanitizeTransactionRecord).filter(Boolean));
       }
 
       if (workbook.Sheets['Loans']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Loans']);
-        setLoans(rows.map(r => ({
-          id: r.id || generateId(),
-          name: r.name,
-          date: r.date,
-          amount: Number(r.amount) || 0,
-          status: r.status || 'borrowing',
-          note: r.note || ''
-        })));
+        setLoans(rows.map(sanitizeLoanRecord).filter(Boolean));
       }
 
       if (workbook.Sheets['Debts']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Debts']);
-        setDebts(rows.map(r => ({
-          id: r.id || generateId(),
-          name: r.name,
-          limit: Number(r.limit) || 0,
-          balance: Number(r.balance) || 0,
-          interest: Number(r.interest) || 0,
-          dueDay: r.dueDay ? Number(r.dueDay) : null,
-          minPayment: Number(r.minPayment) || 0
-        })));
+        setDebts(rows.map(sanitizeDebtRecord).filter(Boolean));
       }
 
       if (workbook.Sheets['Recurring']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Recurring']);
-        setRecurring(rows.map(r => ({
-          id: r.id || generateId(),
-          name: r.name,
-          type: r.type,
-          category: r.category,
-          amount: Number(r.amount) || 0,
-          day: Number(r.day) || 1,
-          note: r.note || '',
+        setRecurring(rows.map(r => {
+          const rec = sanitizeRecurringRecord(r);
+          if (!rec) return null;
           // กันสร้างรายการประจำของเดือนนี้ซ้ำหลังนำเข้า
-          generatedMonths: (Number(r.day) || 1) <= new Date().getDate() ? [toMonthKey(new Date())] : []
-        })));
+          rec.generatedMonths = rec.day <= new Date().getDate() ? [toMonthKey(new Date())] : [];
+          return rec;
+        }).filter(Boolean));
       }
 
       if (workbook.Sheets['Categories']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Categories']);
         const newCats = { income: [], expense: [] };
         rows.forEach(r => {
-          if (r.type === 'income' || r.type === 'expense') {
-            newCats[r.type].push({ id: generateId(), name: r.name });
+          if ((r.type === 'income' || r.type === 'expense') && typeof r.name === 'string' && r.name.trim()) {
+            newCats[r.type].push({ id: generateId(), name: r.name.trim() });
           }
         });
         if (newCats.income.length || newCats.expense.length) setCategories(newCats);
