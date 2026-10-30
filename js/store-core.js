@@ -6,11 +6,22 @@
 // ชนิดข้อมูลที่เก็บเป็น 1 รายการ = 1 document (หมวดหมู่เก็บแยกใน meta/categories)
 export const COLLECTIONS = ['transactions', 'loans', 'debts', 'recurring'];
 
+// แปลงเป็น JSON โดยเรียง key เสมอ (Firestore คืนฟิลด์เรียงตามตัวอักษร ไม่ตรงกับลำดับเดิมของแอป)
+export function stableStringify(value) {
+  if (Array.isArray(value)) return `[${value.map(stableStringify).join(',')}]`;
+  if (value && typeof value === 'object') {
+    return `{${Object.keys(value).sort()
+      .filter(k => value[k] !== undefined)
+      .map(k => `${JSON.stringify(k)}:${stableStringify(value[k])}`).join(',')}}`;
+  }
+  return JSON.stringify(value === undefined ? null : value);
+}
+
 // เทียบรายการเก่ากับใหม่ด้วย id แล้วคืนเฉพาะสิ่งที่ต้องเขียนจริง
 export function diffById(oldList, newList) {
-  const oldMap = new Map(oldList.map(item => [item.id, JSON.stringify(item)]));
+  const oldMap = new Map(oldList.map(item => [item.id, stableStringify(item)]));
   const newIds = new Set(newList.map(item => item.id));
-  const upserts = newList.filter(item => oldMap.get(item.id) !== JSON.stringify(item));
+  const upserts = newList.filter(item => oldMap.get(item.id) !== stableStringify(item));
   const deletes = [...oldMap.keys()].filter(id => !newIds.has(id));
   return { upserts, deletes };
 }

@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { COLLECTIONS, diffById, chunk, decideMigration, recurringTxnId, stripDoc } from '../js/store-core.js';
+import { COLLECTIONS, diffById, chunk, decideMigration, recurringTxnId, stripDoc, stableStringify } from '../js/store-core.js';
 
 test('COLLECTIONS ครบ 4 ชนิด', () => {
   assert.deepEqual(COLLECTIONS, ['transactions', 'loans', 'debts', 'recurring']);
@@ -44,4 +44,13 @@ test('recurringTxnId สร้าง id แบบกำหนดได้', () =
 
 test('stripDoc เติม id และตัด updatedAt', () => {
   assert.deepEqual(stripDoc('a', { amount: 1, updatedAt: {} }), { id: 'a', amount: 1 });
+});
+
+test('stableStringify ไม่สนลำดับ key', () => {
+  assert.equal(stableStringify({ b: 1, a: { d: 2, c: [3, { f: 1, e: 0 }] } }), stableStringify({ a: { c: [3, { e: 0, f: 1 }], d: 2 }, b: 1 }));
+  assert.notEqual(stableStringify({ a: 1 }), stableStringify({ a: 2 }));
+});
+
+test('diffById: ลำดับ key ต่างกันไม่ถือว่าแก้ไข', () => {
+  assert.deepEqual(diffById([{ id: 'a', amount: 1, note: '' }], [{ note: '', amount: 1, id: 'a' }]), { upserts: [], deletes: [] });
 });
