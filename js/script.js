@@ -1,19 +1,14 @@
 /* ===================================================================
    บันทึกกระแสเงินสด - script.js
-   ไฟล์นี้รวมโลจิกทั้งหมดของแอป: จัดเก็บข้อมูลด้วย localStorage,
+   ไฟล์นี้รวมโลจิกหน้าจอทั้งหมดของแอป: อ่าน/เขียนข้อมูลผ่าน window.cashStore (js/store.js, เก็บบน Firestore),
    จัดการรายรับ-รายจ่าย, เงินยืม-คืน, หมวดหมู่, หนี้สิน/บัตรเครดิต,
    รายการประจำ (auto-add ทุกเดือน), แดชบอร์ด+กราฟ, และ Import/Export
    =================================================================== */
 
 /* ===================== 1. STORAGE KEYS & DEFAULTS ===================== */
 
-const STORAGE_KEYS = {
-  transactions: 'cft_transactions',
-  categories: 'cft_categories',
-  loans: 'cft_loans',
-  debts: 'cft_debts',
-  recurring: 'cft_recurring'
-};
+// key ใน localStorage ของข้อมูลรุ่นเก่า (ก่อนย้ายขึ้นคลาวด์) ใช้ตอนล้างสำเนาสำรองในเครื่อง
+const LEGACY_STORAGE_KEYS = ['cft_transactions', 'cft_categories', 'cft_loans', 'cft_debts', 'cft_recurring'];
 
 // หมวดหมู่เริ่มต้น (ใช้ตอนเปิดแอปครั้งแรกเท่านั้น)
 const DEFAULT_CATEGORIES = {
@@ -23,42 +18,22 @@ const DEFAULT_CATEGORIES = {
 
 /* ===================== 2. STORAGE HELPERS ===================== */
 
-// อ่านค่าจาก localStorage แล้วแปลงเป็น JSON, ถ้าไม่มีให้คืนค่า default
-function loadFromStorage(key, defaultValue) {
-  try {
-    const raw = localStorage.getItem(key);
-    if (raw === null) return defaultValue;
-    return JSON.parse(raw);
-  } catch (err) {
-    console.error('loadFromStorage error:', key, err);
-    return defaultValue;
-  }
-}
+// ข้อมูลทั้งหมดอยู่ใน window.cashStore (สร้างโดย js/store-boot.js) ซึ่งอ่านได้ทันทีจาก cache ในเครื่อง
+// และส่งการเปลี่ยนแปลงขึ้น Firestore ให้เอง (ออฟไลน์ก็บันทึกไว้ก่อนแล้วซิงก์ทีหลัง)
+function getTransactions() { return window.cashStore.getTransactions(); }
+function setTransactions(list) { window.cashStore.setTransactions(list); }
 
-// บันทึกค่าเป็น JSON string ลง localStorage
-function saveToStorage(key, value) {
-  try {
-    localStorage.setItem(key, JSON.stringify(value));
-  } catch (err) {
-    console.error('saveToStorage error:', key, err);
-    showToast('บันทึกข้อมูลไม่สำเร็จ (พื้นที่จัดเก็บเต็มหรือไม่รองรับ)');
-  }
-}
+function getCategories() { return window.cashStore.getCategories(); }
+function setCategories(cats) { window.cashStore.setCategories(cats); }
 
-function getTransactions() { return loadFromStorage(STORAGE_KEYS.transactions, []); }
-function setTransactions(list) { saveToStorage(STORAGE_KEYS.transactions, list); }
+function getLoans() { return window.cashStore.getLoans(); }
+function setLoans(list) { window.cashStore.setLoans(list); }
 
-function getCategories() { return loadFromStorage(STORAGE_KEYS.categories, null); }
-function setCategories(cats) { saveToStorage(STORAGE_KEYS.categories, cats); }
+function getDebts() { return window.cashStore.getDebts(); }
+function setDebts(list) { window.cashStore.setDebts(list); }
 
-function getLoans() { return loadFromStorage(STORAGE_KEYS.loans, []); }
-function setLoans(list) { saveToStorage(STORAGE_KEYS.loans, list); }
-
-function getDebts() { return loadFromStorage(STORAGE_KEYS.debts, []); }
-function setDebts(list) { saveToStorage(STORAGE_KEYS.debts, list); }
-
-function getRecurring() { return loadFromStorage(STORAGE_KEYS.recurring, []); }
-function setRecurring(list) { saveToStorage(STORAGE_KEYS.recurring, list); }
+function getRecurring() { return window.cashStore.getRecurring(); }
+function setRecurring(list) { window.cashStore.setRecurring(list); }
 
 // สร้างหมวดหมู่เริ่มต้นถ้ายังไม่เคยมีข้อมูลมาก่อน
 function ensureDefaultCategories() {
@@ -1016,10 +991,12 @@ function checkAndGenerateRecurring() {
       const dayForMonth = Math.min(item.day, daysInMonth(cursor.getFullYear(), cursor.getMonth()));
       const isDuePassed = isCurrentMonth ? today.getDate() >= dayForMonth : true;
 
+      // id แบบกำหนดได้ (rec_<id รายการประจำ>_<เดือน>) ถ้าสองเครื่องสร้างพร้อมกันตอนออฟไลน์จะได้รายการเดียว
+      const txnId = `rec_${item.id}_${ym}`;
       if (!item.generatedMonths.includes(ym) && isDuePassed) {
         const dateStr = `${ym}-${pad2(dayForMonth)}`;
-        transactions.push({
-          id: generateId(),
+        if (!transactions.some(t => t.id === txnId)) transactions.push({
+          id: txnId,
           date: dateStr,
           type: item.type,
           category: item.category,
@@ -1212,6 +1189,8 @@ function initSettingsPage() {
   document.getElementById('import-json-file').addEventListener('change', handleImportJson);
   document.getElementById('import-xlsx-file').addEventListener('change', handleImportXlsx);
   document.getElementById('clear-data-btn').addEventListener('click', handleClearData);
+  document.getElementById('clear-local-backup-btn').addEventListener('click', handleClearLocalBackup);
+  document.getElementById('logout-btn').addEventListener('click', handleLogout);
 }
 
 // รวบรวมข้อมูลทั้งหมดในแอปเป็น object เดียว ใช้ทั้งตอน export json และ xlsx
@@ -1349,13 +1328,16 @@ function handleImportJson(e) {
   reader.onload = (event) => {
     try {
       const data = JSON.parse(event.target.result);
-      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) { e.target.value = ''; return; }
+      if (!confirm(IMPORT_CONFIRM_MESSAGE)) { e.target.value = ''; return; }
 
-      if (Array.isArray(data.transactions)) setTransactions(data.transactions.map(sanitizeTransactionRecord).filter(Boolean));
-      if (data.categories) setCategories(sanitizeCategories(data.categories));
-      if (Array.isArray(data.loans)) setLoans(data.loans.map(sanitizeLoanRecord).filter(Boolean));
-      if (Array.isArray(data.debts)) setDebts(data.debts.map(sanitizeDebtRecord).filter(Boolean));
-      if (Array.isArray(data.recurring)) setRecurring(data.recurring.map(sanitizeRecurringRecord).filter(Boolean));
+      // ส่วนที่ไม่มีในไฟล์ ให้คงข้อมูลเดิมไว้
+      const next = collectAllData();
+      if (Array.isArray(data.transactions)) next.transactions = data.transactions.map(sanitizeTransactionRecord).filter(Boolean);
+      if (data.categories) next.categories = sanitizeCategories(data.categories);
+      if (Array.isArray(data.loans)) next.loans = data.loans.map(sanitizeLoanRecord).filter(Boolean);
+      if (Array.isArray(data.debts)) next.debts = data.debts.map(sanitizeDebtRecord).filter(Boolean);
+      if (Array.isArray(data.recurring)) next.recurring = data.recurring.map(sanitizeRecurringRecord).filter(Boolean);
+      replaceAllData(next);
 
       refreshEverything();
       showToast('นำเข้าข้อมูล .json สำเร็จ');
@@ -1383,32 +1365,33 @@ function handleImportXlsx(e) {
       const data = new Uint8Array(event.target.result);
       const workbook = XLSX.read(data, { type: 'array' });
 
-      if (!confirm('การนำเข้าจะแทนที่ข้อมูลปัจจุบันทั้งหมด ต้องการดำเนินการต่อหรือไม่?')) { e.target.value = ''; return; }
+      if (!confirm(IMPORT_CONFIRM_MESSAGE)) { e.target.value = ''; return; }
 
+      const next = collectAllData();
       if (workbook.Sheets['Transactions']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Transactions']);
-        setTransactions(rows.map(sanitizeTransactionRecord).filter(Boolean));
+        next.transactions = rows.map(sanitizeTransactionRecord).filter(Boolean);
       }
 
       if (workbook.Sheets['Loans']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Loans']);
-        setLoans(rows.map(sanitizeLoanRecord).filter(Boolean));
+        next.loans = rows.map(sanitizeLoanRecord).filter(Boolean);
       }
 
       if (workbook.Sheets['Debts']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Debts']);
-        setDebts(rows.map(sanitizeDebtRecord).filter(Boolean));
+        next.debts = rows.map(sanitizeDebtRecord).filter(Boolean);
       }
 
       if (workbook.Sheets['Recurring']) {
         const rows = XLSX.utils.sheet_to_json(workbook.Sheets['Recurring']);
-        setRecurring(rows.map(r => {
+        next.recurring = rows.map(r => {
           const rec = sanitizeRecurringRecord(r);
           if (!rec) return null;
           // กันสร้างรายการประจำของเดือนนี้ซ้ำหลังนำเข้า
           rec.generatedMonths = rec.day <= new Date().getDate() ? [toMonthKey(new Date())] : [];
           return rec;
-        }).filter(Boolean));
+        }).filter(Boolean);
       }
 
       if (workbook.Sheets['Categories']) {
@@ -1419,8 +1402,9 @@ function handleImportXlsx(e) {
             newCats[r.type].push({ id: generateId(), name: r.name.trim() });
           }
         });
-        if (newCats.income.length || newCats.expense.length) setCategories(newCats);
+        if (newCats.income.length || newCats.expense.length) next.categories = newCats;
       }
+      replaceAllData(next);
 
       refreshEverything();
       showToast('นำเข้าข้อมูล .xlsx สำเร็จ');
@@ -1433,30 +1417,95 @@ function handleImportXlsx(e) {
   reader.readAsArrayBuffer(file);
 }
 
+const IMPORT_CONFIRM_MESSAGE = 'การนำเข้าจะแทนที่ข้อมูลทั้งหมดบนคลาวด์ (มีผลกับทุกเครื่องที่ล็อกอินบัญชีนี้) ต้องการดำเนินการต่อหรือไม่?';
+
+// แทนที่ข้อมูลทั้งหมดบนคลาวด์ ไม่รอผล เพราะตอนออฟไลน์จะค้างจนกว่ามีเน็ต (ผิดพลาดจะแสดงที่ไอคอนสถานะซิงก์)
+function replaceAllData(data) {
+  window.cashStore.replaceAll(data).catch(() => {});
+}
+
 function handleClearData() {
-  if (!confirm('ต้องการล้างข้อมูลทั้งหมดในเครื่องนี้หรือไม่? การกระทำนี้ไม่สามารถย้อนกลับได้')) return;
-  Object.values(STORAGE_KEYS).forEach(key => localStorage.removeItem(key));
+  if (!confirm('ต้องการลบข้อมูลทั้งหมดบนคลาวด์หรือไม่? มีผลกับทุกเครื่องที่ล็อกอินบัญชีนี้ และไม่สามารถย้อนกลับได้')) return;
+  replaceAllData({ transactions: [], loans: [], debts: [], recurring: [], categories: null });
   ensureDefaultCategories();
   refreshEverything();
   showToast('ล้างข้อมูลทั้งหมดแล้ว');
 }
 
-// เรียกใช้หลังจาก import/clear ข้อมูล เพื่อให้ทุกหน้าแสดงผลใหม่ให้ตรงกับข้อมูลล่าสุด
+// ล้างสำเนาข้อมูลรุ่นเก่าใน localStorage (ข้อมูลบนคลาวด์ไม่ถูกแตะ)
+function handleClearLocalBackup() {
+  if (!confirm('ต้องการลบสำเนาข้อมูลเก่าที่เก็บในเครื่องนี้หรือไม่? (ข้อมูลบนคลาวด์ยังอยู่ครบ)')) return;
+  LEGACY_STORAGE_KEYS.forEach(key => localStorage.removeItem(key));
+  showToast('ลบสำเนาข้อมูลเก่าในเครื่องแล้ว');
+}
+
+function handleLogout() {
+  const store = window.cashStore;
+  if (store.getSyncStatus() === 'pending') {
+    if (!confirm('ยังมีข้อมูลที่ยังไม่ได้ซิงก์ขึ้นคลาวด์ ถ้าออกจากระบบตอนนี้ข้อมูลส่วนนั้นจะหาย ต้องการออกจากระบบหรือไม่?')) return;
+  } else if (!confirm('ต้องการออกจากระบบหรือไม่?')) {
+    return;
+  }
+  store.signOut()
+    .then(() => location.reload())
+    .catch(err => { console.error(err); showToast('ออกจากระบบไม่สำเร็จ'); });
+}
+
+// เรียกใช้หลังจาก import/clear ข้อมูล หรือเมื่อมีข้อมูลใหม่จากเครื่องอื่น เพื่อให้ทุกหน้าแสดงผลตรงกับข้อมูลล่าสุด
+// ไม่ล้างฟอร์มที่กำลังกรอก และคงเดือนที่เลือกไว้ในตัวกรอง
 function refreshEverything() {
   refreshAllCategorySelects();
   renderCategoryList();
-  populateMonthFilter('home-month-filter', false);
+  populateMonthFilter('home-month-filter', true);
   renderTransactionList();
   renderLoanList();
   renderDebtList();
   renderRecurringList();
-  renderDashboard();
+  // แดชบอร์ดวาดเฉพาะตอนเปิดอยู่ (canvas ที่ซ่อนไว้ไม่มีขนาด และ switchPage จะวาดใหม่ให้เองตอนเปิด)
+  if (document.getElementById('page-dashboard').classList.contains('active')) renderDashboard();
   updateTopbarBalance();
+}
+
+// รวบการวาดหน้าจอใหม่ให้เหลือครั้งเดียวต่อเฟรม (ข้อมูลจากคลาวด์อาจเข้ามาหลายชุดติดกัน)
+let renderQueued = false;
+function requestRender() {
+  if (renderQueued) return;
+  renderQueued = true;
+  requestAnimationFrame(() => {
+    renderQueued = false;
+    refreshEverything();
+  });
 }
 
 /* ===================== 12. INITIALIZATION ===================== */
 
-document.addEventListener('DOMContentLoaded', () => {
+let appReady = false;
+
+// สลับหน้าจอระหว่าง กำลังโหลด / หน้าล็อกอิน / แอป
+function showScreen(name) {
+  document.getElementById('app-loading').hidden = name !== 'loading';
+  document.getElementById('login-screen').hidden = name !== 'login';
+  document.querySelector('.content').hidden = name !== 'app';
+  document.getElementById('tabbar').hidden = name !== 'app';
+}
+
+const SYNC_STATUS_LABEL = {
+  synced: 'ซิงก์กับคลาวด์แล้ว',
+  pending: 'รอส่งขึ้นคลาวด์ (ข้อมูลบันทึกในเครื่องแล้ว)',
+  error: 'ซิงก์ไม่สำเร็จ'
+};
+
+function updateSyncIcon(status, message) {
+  const el = document.getElementById('sync-status');
+  el.className = `sync-status ${status}`;
+  el.title = SYNC_STATUS_LABEL[status] + (message ? `: ${message}` : '');
+  el.setAttribute('aria-label', el.title);
+}
+
+// เริ่มแอปหลังข้อมูลจากคลาวด์ (หรือ cache ในเครื่อง) มาครบแล้ว
+function startApp() {
+  if (appReady) return;
+  appReady = true;
   ensureDefaultCategories();
 
   setTopbarHeightVar();
@@ -1486,7 +1535,49 @@ document.addEventListener('DOMContentLoaded', () => {
   renderDebtList();
   renderRecurringList();
   updateTopbarBalance();
-});
+  showScreen('app');
+  setTopbarHeightVar();
+}
+
+// js/store-boot.js สร้าง window.cashStore แล้วส่ง event นี้มา
+function bootApp() {
+  const store = window.cashStore;
+
+  document.getElementById('login-btn').addEventListener('click', () => {
+    document.getElementById('login-message').textContent = '';
+    store.signIn().catch(err => {
+      console.error(err);
+      document.getElementById('login-message').textContent = 'เข้าสู่ระบบไม่สำเร็จ กรุณาลองใหม่ (' + (err.code || err.message) + ')';
+    });
+  });
+  document.getElementById('sync-status').addEventListener('click', () => {
+    showToast(document.getElementById('sync-status').title);
+  });
+
+  store.onAuth(user => {
+    if (!user) {
+      showScreen('login');
+      return;
+    }
+    document.getElementById('account-email').textContent = user.email || '';
+    if (!appReady) showScreen('loading');
+  });
+  store.onReady(startApp);
+  store.onChange(requestRender);
+  store.onSyncStatus(updateSyncIcon);
+  updateSyncIcon(store.getSyncStatus());
+}
+
+document.addEventListener('cashstore:created', bootApp);
+
+// ให้ store-boot.js ใช้ฟังก์ชันทำความสะอาดข้อมูลชุดเดียวกันตอนย้ายข้อมูลเก่าขึ้นคลาวด์
+window.cashSanitize = {
+  transactions: sanitizeTransactionRecord,
+  loans: sanitizeLoanRecord,
+  debts: sanitizeDebtRecord,
+  recurring: sanitizeRecurringRecord,
+  categories: sanitizeCategories
+};
 
 /* ===================== 13. NEON CYBER HUB: เอฟเฟกต์และธีมสี ===================== */
 
@@ -1585,7 +1676,7 @@ function cssVar(name) {
     root.style.setProperty('--accent2', themes[key].b);
     dots.forEach(d => d.classList.toggle('active', d.dataset.c === key));
     try { localStorage.setItem('cft_theme', key); } catch (e) {}
-    if (redraw) renderDashboard(); // วาดกราฟใหม่ให้สีตรงธีม
+    if (redraw && appReady) renderDashboard(); // วาดกราฟใหม่ให้สีตรงธีม
   }
   dots.forEach(d => d.addEventListener('click', () => setTheme(d.dataset.c, true)));
   let saved = null;
