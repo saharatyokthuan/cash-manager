@@ -19,7 +19,14 @@ test('PRECACHE มีไฟล์ store และ Firebase SDK 10.14.1', () => {
   for (const f of ['index.html', 'js/store-boot.js', 'js/store.js', 'js/store-core.js', 'js/firebase-config.js']) {
     assert.ok(list.includes(f), f);
   }
+  for (const f of ['manifest.webmanifest', 'icons/icon-192.png', 'icons/icon-512.png', 'icons/icon-maskable-512.png', 'icons/apple-touch-icon.png']) {
+    assert.ok(list.includes(f), f);
+  }
   for (const mod of ['app', 'auth', 'firestore']) {
     assert.ok(list.includes(`https://www.gstatic.com/firebasejs/10.14.1/firebase-${mod}.js`), mod);
   }
+});
+
+test('เปลี่ยนชื่อ cache เป็น v2 ให้เครื่องที่ติดตั้งแล้วโหลดไฟล์ใหม่', () => {
+  assert.match(sw, /const CACHE = 'cash-manager-v2';/);
 });

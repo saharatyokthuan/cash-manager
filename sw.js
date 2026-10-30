@@ -3,7 +3,7 @@
    เพื่อให้เปิดแอปได้แม้ไม่มีอินเทอร์เน็ต (ข้อมูลจริงอยู่ใน Firestore cache อีกชั้น)
    =================================================================== */
 
-const CACHE = 'cash-manager-v1';
+const CACHE = 'cash-manager-v2';
 const FIREBASE = 'https://www.gstatic.com/firebasejs/10.14.1';
 
 const PRECACHE = [
@@ -15,6 +15,11 @@ const PRECACHE = [
   'js/store.js',
   'js/store-core.js',
   'js/firebase-config.js',
+  'manifest.webmanifest',
+  'icons/icon-192.png',
+  'icons/icon-512.png',
+  'icons/icon-maskable-512.png',
+  'icons/apple-touch-icon.png',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-app.js',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-auth.js',
   'https://www.gstatic.com/firebasejs/10.14.1/firebase-firestore.js',
