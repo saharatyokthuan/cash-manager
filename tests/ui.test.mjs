@@ -135,3 +135,11 @@ test('กดทุกเมนูและแดชบอร์ด ไม่ม�
   assert.ok(ctx.charts.length > 0);
   assert.deepEqual(ctx.errors, []);
 });
+
+test('เชื่อมฐานข้อมูลไม่ได้ก่อนพร้อม: หน้าโหลดบอกสาเหตุ ไม่หมุนค้างเงียบ ๆ', () => {
+  const ctx = boot({ ready: false });
+  ctx.store.setStatus('error', 'permission-denied');
+  const text = ctx.$('app-loading-text').textContent;
+  assert.ok(text.includes('permission-denied'), text);
+  assert.ok(text.includes('docs/firebase-setup.md'), text);
+});

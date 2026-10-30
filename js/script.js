@@ -1500,6 +1500,11 @@ function updateSyncIcon(status, message) {
   el.className = `sync-status ${status}`;
   el.title = SYNC_STATUS_LABEL[status] + (message ? `: ${message}` : '');
   el.setAttribute('aria-label', el.title);
+  // ผิดพลาดก่อนข้อมูลชุดแรกมาถึง (เช่น ยังไม่ได้ Publish Rules) ให้บอกบนหน้าโหลด แทนการหมุนค้างเงียบ ๆ
+  if (!appReady && status === 'error') {
+    document.getElementById('app-loading-text').textContent =
+      `เชื่อมต่อฐานข้อมูลไม่สำเร็จ (${message || 'unknown error'}) กรุณาตรวจการตั้งค่า Firebase ตาม docs/firebase-setup.md`;
+  }
 }
 
 // เริ่มแอปหลังข้อมูลจากคลาวด์ (หรือ cache ในเครื่อง) มาครบแล้ว
